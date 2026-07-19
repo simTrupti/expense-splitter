@@ -45,7 +45,7 @@ public class ExpenseService {
         // 3. Create the expense
         Expense expense = new Expense();
 
-        expense.setDescription(request.getDescription(request.getDescription()));
+        expense.setDescription(request.getDescription());
         expense.setAmount(request.getAmount());
         expense.setPaidBy(paidBy);
         expense.setGroup(group);
