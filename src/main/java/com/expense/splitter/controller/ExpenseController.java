@@ -3,10 +3,10 @@ package com.expense.splitter.controller;
 import com.expense.splitter.dto.ExpenseRequest;
 import com.expense.splitter.entity.Expense;
 import com.expense.splitter.service.ExpenseService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/expenses")
@@ -21,5 +21,10 @@ public class ExpenseController {
     @PostMapping
     public Expense addExpense(@RequestBody ExpenseRequest request){
         return expenseService.addExpense(request);
+    }
+
+    @GetMapping("/groups/{groupId}/net-balances")
+    public Map<Long, BigDecimal> getNetBalances(@PathVariable Long groupId){
+        return expenseService.calculateNetBalances(groupId);
     }
 }

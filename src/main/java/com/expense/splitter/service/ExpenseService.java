@@ -14,6 +14,10 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Map;
+
+import java.util.HashMap;
+import java.util.List;
 
 @Service
 public class ExpenseService {
@@ -72,8 +76,35 @@ public class ExpenseService {
 
         return savedExpense;
 
+    }
 
+    public Map<Long, BigDecimal> calculateNetBalances(Long groupId) {
 
+        List<Expense> expenses = expenseRepository.findByGroupId(groupId);
+
+        Map<Long, BigDecimal> balanceMap = new HashMap<>();
+
+        for (Expense expense : expenses) {
+
+            List<Split> splits = splitRepository.findByExpenseId(expense.getId());
+
+            Long payerId = expense.getPaidBy().getId();
+
+            balanceMap.put(payerId,balanceMap.getOrDefault(payerId, BigDecimal.ZERO).add(expense.getAmount()));
+
+            for (Split split : splits) {
+
+                Long participantId = split.getUser().getId();
+
+                balanceMap.put(
+                        participantId,
+                        balanceMap.getOrDefault(participantId, BigDecimal.ZERO)
+                                .subtract(split.getAmount())
+                );
+            }
+
+        }
+        return balanceMap;
 
     }
 
