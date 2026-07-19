@@ -1,6 +1,7 @@
 package com.expense.splitter.service;
 
 import com.expense.splitter.dto.ExpenseRequest;
+import com.expense.splitter.dto.TransactionResponse;
 import com.expense.splitter.entity.Expense;
 import com.expense.splitter.entity.Group;
 import com.expense.splitter.entity.Split;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Map;
 
 import java.util.HashMap;
@@ -105,6 +107,64 @@ public class ExpenseService {
 
         }
         return balanceMap;
+
+    }
+
+    public List<TransactionResponse> simplifyBalances(Long groupId) {
+
+        Map<Long, BigDecimal> balanceMap = calculateNetBalances(groupId);
+
+        List<TransactionResponse> transactions = new ArrayList<>();
+
+        while (true) {
+
+            Long creditor = null;
+            Long debtor = null;
+
+            BigDecimal maxCredit = BigDecimal.ZERO;
+            BigDecimal maxDebit = BigDecimal.ZERO;
+
+            for (Map.Entry<Long, BigDecimal> entry : balanceMap.entrySet()) {
+
+                BigDecimal balance = entry.getValue();
+
+                if (balance.compareTo(maxCredit) > 0) {
+                    maxCredit = balance;
+                    creditor = entry.getKey();
+                }
+
+                if (balance.compareTo(maxDebit) < 0) {
+                    maxDebit = balance;
+                    debtor = entry.getKey();
+                }
+            }
+
+            if (creditor == null || debtor == null
+                    || maxCredit.compareTo(BigDecimal.ZERO) == 0
+                    || maxDebit.compareTo(BigDecimal.ZERO) == 0) {
+
+                break;
+            }
+
+            BigDecimal settlementAmount =
+                    maxCredit.min(maxDebit.abs());
+
+            User creditorUser = userRepository.findById(creditor)
+                    .orElseThrow();
+
+            User debtorUser = userRepository.findById(debtor)
+                    .orElseThrow();
+
+            transactions.add(
+                    new TransactionResponse(
+                            debtorUser.getName(),
+                            creditorUser.getName(),
+                            settlementAmount
+                    )
+            );
+
+        }
+        return transactions;
 
     }
 
