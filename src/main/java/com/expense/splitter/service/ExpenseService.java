@@ -162,6 +162,17 @@ public class ExpenseService {
                             settlementAmount
                     )
             );
+            // Update creditor balance
+            balanceMap.put(
+                    creditor,
+                    balanceMap.get(creditor).subtract(settlementAmount)
+            );
+
+            // Update debtor balance
+            balanceMap.put(
+                    debtor,
+                    balanceMap.get(debtor).add(settlementAmount)
+            );
 
         }
         return transactions;
