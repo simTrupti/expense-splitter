@@ -1,11 +1,9 @@
 package com.expense.splitter.service;
 
 import com.expense.splitter.dto.ExpenseRequest;
+import com.expense.splitter.dto.SplitRequest;
 import com.expense.splitter.dto.TransactionResponse;
-import com.expense.splitter.entity.Expense;
-import com.expense.splitter.entity.Group;
-import com.expense.splitter.entity.Split;
-import com.expense.splitter.entity.User;
+import com.expense.splitter.entity.*;
 import com.expense.splitter.repository.ExpenseRepository;
 import com.expense.splitter.repository.GroupRepository;
 import com.expense.splitter.repository.SplitRepository;
@@ -56,25 +54,90 @@ public class ExpenseService {
         expense.setPaidBy(paidBy);
         expense.setGroup(group);
         expense.setCreatedAt(LocalDateTime.now());
+        expense.setSplitType(request.getSplitType());
 
         // 4. Save expense
         Expense savedExpense = expenseRepository.save(expense);
 
-        //calculate each person's equal share
-        BigDecimal splitAmount =  request.getAmount().divide(BigDecimal.valueOf(request.getParticipantIds().size()),2, RoundingMode.HALF_UP);
+        if (request.getSplitType() == SplitType.EQUAL) {
 
-        //create a aplit for every participants
-        for(Long participantId : request.getParticipantIds()){
+            //calculate each person's equal share
+            BigDecimal splitAmount = request.getAmount().divide(BigDecimal.valueOf(request.getParticipantIds().size()), 2, RoundingMode.HALF_UP);
 
-            User participant = userRepository.findById(participantId).orElseThrow();
+            //create a aplit for every participants
+            for (Long participantId : request.getParticipantIds()) {
+
+                User participant = userRepository.findById(participantId).orElseThrow();
+
+                Split split = new Split();
+                split.setExpense(savedExpense);
+                split.setUser(participant);
+                split.setAmount(splitAmount);
+
+                splitRepository.save(split);
+            }
+        }else if (request.getSplitType() == SplitType.EXACT) {
+            BigDecimal totalSplitAmount = BigDecimal.ZERO;
+
+            for (SplitRequest splitRequest : request.getSplits()) {
+
+                totalSplitAmount = totalSplitAmount.add(splitRequest.getAmount());
+            }
+            if (totalSplitAmount.compareTo(request.getAmount()) != 0) {
+                throw new IllegalArgumentException(
+                        "Split amounts must equal the total expense amount"
+                );
+            }
+            for (SplitRequest splitRequest : request.getSplits()) {
+
+                User participant = userRepository
+                        .findById(splitRequest.getUserId())
+                        .orElseThrow();
+
+                Split split = new Split();
+
+                split.setExpense(savedExpense);
+                split.setUser(participant);
+                split.setAmount(splitRequest.getAmount());
+
+                splitRepository.save(split);
+            }
+
+        } else if (request.getSplitType() == SplitType.PERCENTAGE) {
+
+        BigDecimal totalPercentage = BigDecimal.ZERO;
+
+        for (SplitRequest splitRequest : request.getSplits()) {
+            totalPercentage =
+                    totalPercentage.add(splitRequest.getPercentage());
+        }
+
+        if (totalPercentage.compareTo(BigDecimal.valueOf(100)) != 0) {
+            throw new IllegalArgumentException(
+                    "Split percentages must add up to 100"
+            );
+        }
+
+        for (SplitRequest splitRequest : request.getSplits()) {
+
+            User participant = userRepository
+                    .findById(splitRequest.getUserId())
+                    .orElseThrow();
+
+            BigDecimal splitAmount = request.getAmount()
+                    .multiply(splitRequest.getPercentage())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
             Split split = new Split();
+
             split.setExpense(savedExpense);
             split.setUser(participant);
             split.setAmount(splitAmount);
 
             splitRepository.save(split);
         }
+
+    }
 
         return savedExpense;
 

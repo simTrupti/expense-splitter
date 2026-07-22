@@ -32,4 +32,7 @@ public class Expense {
 
     @ManyToOne
     private Group group;
+
+    @Enumerated(EnumType.STRING)
+    private SplitType splitType;
 }

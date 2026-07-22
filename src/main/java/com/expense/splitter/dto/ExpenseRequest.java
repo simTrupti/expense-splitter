@@ -1,5 +1,6 @@
 package com.expense.splitter.dto;
 
+import com.expense.splitter.entity.SplitType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,5 +19,12 @@ public class ExpenseRequest {
 
     private Long groupId;
 
+
+    // Used for EQUAL splitting
     private List<Long> participantIds;
+
+    // Used for EXACT splitting
+    private List<SplitRequest> splits;
+
+    private SplitType splitType;
 }
