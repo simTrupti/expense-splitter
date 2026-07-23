@@ -4,11 +4,13 @@ import com.expense.splitter.dto.ExpenseRequest;
 import com.expense.splitter.dto.SplitRequest;
 import com.expense.splitter.dto.TransactionResponse;
 import com.expense.splitter.entity.*;
+import com.expense.splitter.exception.ResourceNotFoundException;
 import com.expense.splitter.repository.ExpenseRepository;
 import com.expense.splitter.repository.GroupRepository;
 import com.expense.splitter.repository.SplitRepository;
 import com.expense.splitter.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,13 +40,20 @@ public class ExpenseService {
         this.groupRepository = groupRepository;
     }
 
+    @Transactional
     public Expense addExpense(ExpenseRequest request){
 
         //find the user who paid
-        User paidBy = userRepository.findById(request.getPaidByUserId()).orElseThrow();
+        User paidBy = userRepository.findById(request.getPaidByUserId()).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "User not found with id: " + request.getPaidByUserId()
+                ));
 
         //find the group
-        Group group = groupRepository.findById(request.getGroupId()).orElseThrow();
+        Group group = groupRepository.findById(request.getGroupId()).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Group not found with id: " + request.getGroupId()
+                ));
 
         // 3. Create the expense
         Expense expense = new Expense();
@@ -61,6 +70,14 @@ public class ExpenseService {
 
         if (request.getSplitType() == SplitType.EQUAL) {
 
+            if (request.getParticipantIds() == null
+                    || request.getParticipantIds().isEmpty()) {
+
+                throw new IllegalArgumentException(
+                        "Participants are required for equal split"
+                );
+                }
+
             //calculate each person's equal share
             BigDecimal splitAmount = request.getAmount().divide(BigDecimal.valueOf(request.getParticipantIds().size()), 2, RoundingMode.HALF_UP);
 
@@ -76,10 +93,27 @@ public class ExpenseService {
 
                 splitRepository.save(split);
             }
-        }else if (request.getSplitType() == SplitType.EXACT) {
+        } else if (request.getSplitType() == SplitType.EXACT) {
+
+                if (request.getSplits() == null
+                        || request.getSplits().isEmpty()) {
+
+                    throw new IllegalArgumentException(
+                            "Splits are required for exact split"
+                    );
+                }
+
             BigDecimal totalSplitAmount = BigDecimal.ZERO;
 
             for (SplitRequest splitRequest : request.getSplits()) {
+
+                if (splitRequest.getAmount() == null
+                        || splitRequest.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+
+                    throw new IllegalArgumentException(
+                            "Exact split amount must be greater than zero"
+                    );
+                }
 
                 totalSplitAmount = totalSplitAmount.add(splitRequest.getAmount());
             }
@@ -105,9 +139,26 @@ public class ExpenseService {
 
         } else if (request.getSplitType() == SplitType.PERCENTAGE) {
 
+            if (request.getSplits() == null
+                    || request.getSplits().isEmpty()) {
+
+                throw new IllegalArgumentException(
+                        "Splits are required for percentage split"
+                );
+                }
+
         BigDecimal totalPercentage = BigDecimal.ZERO;
 
         for (SplitRequest splitRequest : request.getSplits()) {
+
+            if (splitRequest.getPercentage() == null
+                    || splitRequest.getPercentage().compareTo(BigDecimal.ZERO) <= 0) {
+
+                throw new IllegalArgumentException(
+                        "Percentage must be greater than zero"
+                );
+            }
+
             totalPercentage =
                     totalPercentage.add(splitRequest.getPercentage());
         }
