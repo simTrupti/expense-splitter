@@ -4,11 +4,13 @@ import com.expense.splitter.dto.ExpenseRequest;
 import com.expense.splitter.dto.TransactionResponse;
 import com.expense.splitter.entity.Expense;
 import com.expense.splitter.service.ExpenseService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
 
 @RestController
 @RequestMapping("/expenses")
@@ -21,7 +23,7 @@ public class ExpenseController {
     }
 
     @PostMapping
-    public Expense addExpense(@RequestBody ExpenseRequest request){
+    public Expense addExpense(@Valid @RequestBody ExpenseRequest request){
         return expenseService.addExpense(request);
     }
 
