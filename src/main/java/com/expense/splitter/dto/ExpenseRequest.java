@@ -22,9 +22,6 @@ public class ExpenseRequest {
     @Positive(message = "Amount must be greater than zero")
     private BigDecimal amount;
 
-    @NotNull(message = "Paid by user id is required")
-    private Long paidByUserId;
-
     @NotNull(message = "Group id is required")
     private Long groupId;
 

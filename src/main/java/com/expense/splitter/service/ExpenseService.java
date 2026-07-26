@@ -5,10 +5,9 @@ import com.expense.splitter.dto.SplitRequest;
 import com.expense.splitter.dto.TransactionResponse;
 import com.expense.splitter.entity.*;
 import com.expense.splitter.exception.ResourceNotFoundException;
-import com.expense.splitter.repository.ExpenseRepository;
-import com.expense.splitter.repository.GroupRepository;
-import com.expense.splitter.repository.SplitRepository;
-import com.expense.splitter.repository.UserRepository;
+import com.expense.splitter.repository.*;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,32 +27,55 @@ public class ExpenseService {
     private final SplitRepository splitRepository;
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
+    private final GroupMemberRepository groupMemberRepository;
 
     public ExpenseService(ExpenseRepository expenseRepository,
                           SplitRepository splitRepository,
                           UserRepository userRepository,
-                          GroupRepository groupRepository) {
+                          GroupRepository groupRepository,
+                          GroupMemberRepository groupMemberRepository) {
 
         this.expenseRepository = expenseRepository;
         this.splitRepository = splitRepository;
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
+        this.groupMemberRepository = groupMemberRepository;
     }
 
     @Transactional
     public Expense addExpense(ExpenseRequest request){
 
         //find the user who paid
-        User paidBy = userRepository.findById(request.getPaidByUserId()).orElseThrow(() ->
-                new ResourceNotFoundException(
-                        "User not found with id: " + request.getPaidByUserId()
-                ));
+        String loggedInEmail = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User paidBy = userRepository
+                .findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Logged-in user not found"
+                        )
+                );
 
         //find the group
         Group group = groupRepository.findById(request.getGroupId()).orElseThrow(() ->
                 new ResourceNotFoundException(
                         "Group not found with id: " + request.getGroupId()
                 ));
+
+        boolean isMember =
+                groupMemberRepository.existsByGroupIdAndUserId(
+                        group.getId(),
+                        paidBy.getId()
+                );
+
+        if (!isMember) {
+            throw new AccessDeniedException(
+                    "You are not a member of this group"
+            );
+        }
 
         // 3. Create the expense
         Expense expense = new Expense();
