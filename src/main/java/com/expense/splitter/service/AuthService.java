@@ -26,6 +26,11 @@ public class AuthService {
 
     public User register(RegisterRequest request) {
 
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException(
+                    "Email is already registered"
+            );
+        }
 
         User user = new User();
 
@@ -43,7 +48,7 @@ public class AuthService {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found")
+                        new ResourceNotFoundException( "Invalid email or password")
                 );
 
         boolean passwordMatches = passwordEncoder.matches(
@@ -52,7 +57,7 @@ public class AuthService {
         );
 
         if (!passwordMatches) {
-            throw new IllegalArgumentException("Invalid password");
+            throw new IllegalArgumentException( "Invalid email or password");
         }
 
         return jwtService.generateToken(user.getEmail());

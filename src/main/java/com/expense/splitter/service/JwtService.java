@@ -1,6 +1,7 @@
 package com.expense.splitter.service;
 
 import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -11,12 +12,17 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    private final String SECRET =
-            "my-super-secret-expense-splitter-key-123456789";
+    private final String SECRET = "...";
+
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.expiration}")
+    private long expiration;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(
-                SECRET.getBytes(StandardCharsets.UTF_8)
+                secret.getBytes(StandardCharsets.UTF_8)
         );
     }
 
@@ -26,7 +32,7 @@ public class JwtService {
                 .subject(email)
                 .issuedAt(new Date())
                 .expiration(
-                        new Date(System.currentTimeMillis() + 1000 * 60 * 60)
+                        new Date(System.currentTimeMillis() + expiration)
                 )
                 .signWith(getSigningKey())
 
